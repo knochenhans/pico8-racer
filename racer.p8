@@ -13,17 +13,19 @@ screen_width = 128
 
 player = {
     x_pos = 0,
+    sprite_width = 32,
     x_velocity = 0,
     sprite_root = 97,
     current_sprite_offset = 0,
-    move_speed = 0.1
+    move_speed = 0.1,
+    pos = { x = 0, y = 0, z = 0 }
 }
 
 -- Camera position
 camera = { x = 0, y = -1.5, z = -1.3 }
 
 -- Movement speed
-player.move_speed = 2
+player.move_speed = 0.07
 
 current_z = -9
 current_color_idx = 1
@@ -33,12 +35,10 @@ z_pos = 0
 
 speed = 0
 
--- section = { color = 3, landscape_color = 5, marking = 1, slope = 0, curve = 0 }
-
 sections = {}
 
 function set_loop(sfx, start, end_)
-  local addr = 0x3200 + 68*sfx
+  local addr = 0x3200 + 68 * sfx
   poke(addr + 66, start)
   poke(addr + 67, end_)
 end
@@ -68,6 +68,7 @@ function _init()
     sfx(0)
 
     player.x_pos = screen_width / 2 - 16
+    camera_offset = player.x_pos
 end
 
 function qsort_by_sum_z(lines, compare)
@@ -101,6 +102,19 @@ function qsort_by_sum_z(lines, compare)
     end
 
     quicksort(lines, 1, #lines)
+end
+
+-- Perform perspective projection
+function project(point)
+    local dx = point.x - camera.x
+    local dy = point.y - camera.y
+    local dz = point.z - camera.z
+
+    local factor = FOV / (dz + NEAR_PLANE)
+    local x = dx * factor + HALF_WIDTH
+    local y = dy * factor + HALF_HEIGHT
+
+    return { x = x, y = y, dz = dz }
 end
 
 function draw_projected_filled_rect(v1, v2, v3, v4, color)
@@ -146,14 +160,14 @@ end
 
 z_offset = 0
 
-width = 5
-length = 0.5
+road_width_half = 2.5
+strip_length = 0.5
 
-function generate_strip(width, z, length, x_offset)
+function generate_strip(width, z, strip_length, x_offset)
     local vertices = {}
-    add(vertices, project({ x = width + x_offset, y = 0, z = z + length }))
+    add(vertices, project({ x = width + x_offset, y = 0, z = z + strip_length }))
     add(vertices, project({ x = width + x_offset, y = 0, z = z }))
-    add(vertices, project({ x = -1 * width + x_offset, y = 0, z = z + length }))
+    add(vertices, project({ x = -1 * width + x_offset, y = 0, z = z + strip_length }))
     add(vertices, project({ x = -1 * width + x_offset, y = 0, z = z }))
     return vertices
 end
@@ -164,8 +178,8 @@ function _draw()
     
     local z_offset = 0
     
-    projected_rects = { }
-    projected_mark_rects = { }
+    projected_rects = {}
+    projected_mark_rects = {}
 
     for section in all(sections) do
         vertices = {}
@@ -173,57 +187,47 @@ function _draw()
         slope = section.slope * -1
 
         -- Calculate screen projections 
-        add(vertices, project({ x = width / 2, y = section.y + slope, z = z_pos + z_offset + length }))
-        add(vertices, project({ x = width / 2, y = section.y, z = z_pos + z_offset }))
-        add(vertices, project({ x = -1 * (width / 2), y = section.y + slope, z = z_pos + z_offset + length }))
-        add(vertices, project({ x = -1 * (width / 2), y = section.y, z = z_pos + z_offset }))
+        add(vertices, project({ x = road_width_half, y = section.y + slope, z = z_pos + z_offset + strip_length }))
+        add(vertices, project({ x = road_width_half, y = section.y, z = z_pos + z_offset }))
+        add(vertices, project({ x = -1 * (road_width_half), y = section.y + slope, z = z_pos + z_offset + strip_length }))
+        add(vertices, project({ x = -1 * (road_width_half), y = section.y, z = z_pos + z_offset }))
         
         add(projected_rects, { vertices = vertices, color = section.color, landscape_color = section.landscape_color } )
         vertices = {}
         
         if section.marking == 1 then         
-            add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, length, 0) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, length, -1) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, length, 1) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, length, width / 2 - 0.1) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, length, (width / 2 - 0.1) - 0.2) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, length, -1 * (width / 2 - 0.1)) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, length, -1 * ((width / 2 - 0.1) - 0.2)) } )
+            add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, strip_length, 0) } )
+            add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, strip_length, -1) } )
+            add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, strip_length, 1) } )
+            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, strip_length, road_width_half - 0.1) } )
+            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, strip_length, (road_width_half - 0.1) - 0.2) } )
+            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, strip_length, -1 * (road_width_half - 0.1)) } )
+            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, strip_length, -1 * ((road_width_half - 0.1) - 0.2)) } )
         end
 
-        z_offset += length
+        z_offset += strip_length
     end
 
+    -- Landscape strips
     for projected_rect in all(projected_rects) do
         rectfill(0, projected_rect.vertices[1].y, 128, projected_rect.vertices[2].y, projected_rect.landscape_color)
     end
 
+    -- Road strips
     for projected_rect in all(projected_rects) do
         draw_projected_filled_rect(projected_rect.vertices[1], projected_rect.vertices[2], projected_rect.vertices[3], projected_rect.vertices[4], projected_rect.color)
     end
     
+    -- Road markings
     for projected_rect in all(projected_mark_rects) do
         draw_projected_filled_rect(projected_rect.vertices[1], projected_rect.vertices[2], projected_rect.vertices[3], projected_rect.vertices[4], 7)
     end
 
-    spr(player.sprite_root + player.current_sprite_offset, player.x_pos, 100, 4, 2)
-end
-
--- Perform perspective projection
-function project(point)
-    local dx = point.x - camera.x
-    local dy = point.y - camera.y
-    local dz = point.z - camera.z
-
-    local factor = FOV / (dz + NEAR_PLANE)
-    local x = dx * factor + HALF_WIDTH
-    local y = dy * factor + HALF_HEIGHT
-
-    return { x = x, y = y, dz = dz }
+    spr(player.sprite_root + player.current_sprite_offset, project(player.pos).x - player.sprite_width / 2, 110, 4, 2)
 end
 
 timer = 0
-wait = 0.1
+wait = 0.01
 
 deleted = 0
 
@@ -241,34 +245,40 @@ function _update()
         player.current_sprite_offset = 4
     elseif btn(2) then
         -- Up arrow button
-        -- camera.y = camera.y - player.move_speed
         speed += 0.01
     elseif btn(3) then
         -- Down arrow button
-        -- camera.y = camera.y + player.move_speed
         speed -= 0.01
+        
+    end
+
+    if speed < 0 then
+        speed = 0
     end
 
     if player.x_velocity != 0 then
-        player.x_pos += player.x_velocity
-        -- camera.x = camera.x - player.move_speed
+        player.pos.x += player.x_velocity
+        camera.x = player.pos.x
     end
 
+    -- Set engine sfx loop
     s = flr(speed * 50)
-
     set_loop(0, s, s + 3)
     
+    -- Update road strips
     if time() - timer > wait then
         timer = time()
         
         z_pos -= speed
 
+        -- Remove road strips leaving the camera
         if z_pos < -0.5 then
             deli(sections, 1)
             deleted += 1
             z_pos = 0
         end
 
+        -- For every 2 removed strips, add 2 new one
         if deleted >= 2 then
             add_section_pair(section_config, 0, 0, 0)
             deleted = 0
@@ -327,21 +337,21 @@ __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000222222222222220000000000000000000222222222222220000000000000000222222222222220000000000000000000000000000000000
-0000000000000002222222222222eee2200000000000000022222222222222e222000000000000222e222222222222ef00000000000000000000000000000000
-00000000000002eef000000000000000ff200000000002eef000000000000000ff222000000222ee000000000000000eff200000000000000000000000000000
-00000000000022eeeeeeeeeeeeefefffee220000000022eeeeeeeeeeeeeeefffee222220022222eeeeeeeeeeeeeeeeeeee220000000000000000000000000000
-000000000002eeeee222222222222222eef220000002eeeee222222222222222eef222e222222eee222222222222222eeeef2000000000000000000000000000
-0000000000eeeeeeeeeeeeeeeeeeefffffffff0000eeeeeeeeeeeeeeeeeeeeefffffffe222eeeeeeeeeeeeeeeeeeeeeeefffff00000000000000000000000000
-0000000000222222222222222222222222222200002222222222222222222222222222e222222222222222222222222222222200000000000000000000000000
-0000000000882888822666666666622888828800008828888226666666666228888288e222882888822666666666622888828e00000000000000000000000000
-0000000000882888822666666666622888828800008828888226666666666228888288e222882888822666666666622888828e00000000000000000000000000
-0000000000222222222222222222222222222200002222222222222222222222222222e112222222222222222222222222222200000000000000000000000000
-0000000000eeeeeeeeeeeeeeeeeeeeeeefefff0000eeeeeeeeeeeeeeeeeeeeeeefefff2002eeeeeeeeeeeeeeeeeeeeeeeeeeff00000000000000000000000000
-0000000000eeeeeeeeeeeeeeeeeeeeeeeeeeef0000eeeeeeeeeeeeeeeeeeeeeeeeeeef2002eeeeeeeeeeeeeeeeeeeeeeeeeeef00000000000000000000000000
-0000000000eeeeeeeeeeeeeeeeeeeeeeeeeeef0000eeeeeeeeeeeeeeeeeeeeeeeeeeeed0012eeeeeeeeeeeeeeeeeeeeeeeeeef00000000000000000000000000
-00000000001111122222222222222222211111000011111222222222222222222111111001111112222222222222222221111100000000000000000000000000
-00000000001111110000000000000000111111000001111100000000000000001111110000111111000000000000000011111000000000000000000000000000
+00000000000000000222222222222220000000000000000002222222222222200000000000000000022222222222222000000000000000000000000000000000
+0000000000000002222222222222eee220000000000000022222222222222e22200000000000000222e222222222222ef0000000000000000000000000000000
+00000000000002eef000000000000000ff20000000002eef000000000000000ff22200000000222ee000000000000000eff20000000000000000000000000000
+00000000000022eeeeeeeeeeeeefefffee22000000022eeeeeeeeeeeeeeefffee22222000022222eeeeeeeeeeeeeeeeeeee22000000000000000000000000000
+000000000002eeeee222222222222222eef22000002eeeee222222222222222eef222e20022222eee222222222222222eeeef200000000000000000000000000
+0000000000eeeeeeeeeeeeeeeeeeefffffffff000eeeeeeeeeeeeeeeeeeeeefffffffe20022eeeeeeeeeeeeeeeeeeeeeeefffff0000000000000000000000000
+000000000022222222222222222222222222220002222222222222222222222222222e2002222222222222222222222222222220000000000000000000000000
+000000000088288882266666666662288882880008828888226666666666228888288e20022882888822666666666622888828e0000000000000000000000000
+000000000088288882266666666662288882880008828888226666666666228888288e20022882888822666666666622888828e0000000000000000000000000
+000000000022222222222222222222222222220002222222222222222222222222222e1001222222222222222222222222222220000000000000000000000000
+0000000000eeeeeeeeeeeeeeeeeeeeeeefefff000eeeeeeeeeeeeeeeeeeeeeeefefff200002eeeeeeeeeeeeeeeeeeeeeeeeeeff0000000000000000000000000
+0000000000eeeeeeeeeeeeeeeeeeeeeeeeeeef000eeeeeeeeeeeeeeeeeeeeeeeeeeef200002eeeeeeeeeeeeeeeeeeeeeeeeeeef0000000000000000000000000
+0000000000eeeeeeeeeeeeeeeeeeeeeeeeeeef000eeeeeeeeeeeeeeeeeeeeeeeeeeeed000012eeeeeeeeeeeeeeeeeeeeeeeeeef0000000000000000000000000
+00000000001111122222222222222222211111000111112222222222222222221111110000111111222222222222222222111110000000000000000000000000
+00000000001111110000000000000000111111000011111000000000000000011111100000011111100000000000000001111100000000000000000000000000
 __gff__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000001010000010100000101000000000101010101010101010101010000000001010101010101010000000000000000010101010101010100000000000000000101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -349,5 +359,5 @@ __map__
 0000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 000100030402004030050100605006050060500705008050090500a0500b0500b0500c0500d0500e0500f050100501105012050130501405015050160501705018050190501a0501b0501c0501e0501f0501f050
-000100030702009030090100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000300001f0501f0301f0501f0301f0501f030160300e020040101300010000060000000003000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00010003090200a0300b0100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
