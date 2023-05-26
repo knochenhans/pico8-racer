@@ -52,13 +52,13 @@ section_config = {
 }
 
 function add_section_pair(section_config, slope, curve, y)
-    add(sections, { color = section_config.colors[1], landscape_color = section_config.colors_landscape[1], marking = 0, objects = 0, slope = slope, curve = curve, y = y })
-    add(sections, { color = section_config.colors[2], landscape_color = section_config.colors_landscape[2], marking = 1, objects = 0, slope = slope, curve = curve, y = y })
+    add(sections, { color = section_config.colors[1], landscape_color = section_config.colors_landscape[1], marking = false, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = slope, curve = curve, y = y })
+    add(sections, { color = section_config.colors[2], landscape_color = section_config.colors_landscape[2], marking = true, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = slope, curve = curve, y = y })
 end
 
 function _init()
     -- Generate initial sections
-    for x=0, 1 do
+    for x=0, 10 do
         add_section_pair(section_config, 0, 0, 0)
     end
 
@@ -68,7 +68,7 @@ function _init()
     -- add(sections, { color = 6, landscape_color = 11, marking = 0, slope = 0, curve = 0, y = 0.1 })
     -- add(sections, { color = 6, landscape_color = 3, marking = 0, slope = 0, curve = 0, y = 0.1 })
 
-    add(sections, { color = section_config.colors[1], landscape_color = 5, marking = 0, objects = 1, slope = 0, curve = 0, y = 0 })
+    -- add(sections, { color = section_config.colors[1], landscape_color = 5, marking = 0, objects = 1, object_offset_x = rnd(1), slope = 0, curve = 0, y = 0 })
 
 
     sfx(0)
@@ -179,12 +179,17 @@ function generate_strip(width, z, strip_length, x_offset)
     return vertices
 end
 
+-- takes in-world coordinates/sizes, returns screen coordinates
 function generate_sprite(width, height, x, y, z)
+    scale_factor = 1/24
     return {
-        projected_corner_top_left = project({ x = x, y = y + height, z = z }),
-        projected_corner_bottom_right = project({ x = x + width, y = y, z = z })
+        projected_corner_top_left = project({ x = x, y = y + height * scale_factor, z = z }),
+        projected_corner_bottom_right = project({ x = x + width * scale_factor, y = y, z = z })
     }
 end
+
+sprite_w = 24
+sprite_h = 32
 
 function _draw()
     cls()
@@ -211,7 +216,7 @@ function _draw()
         add(projected_rects, { vertices = vertices, color = section.color, landscape_color = section.landscape_color } )
         vertices = {}
         
-        if section.marking == 1 then         
+        if section.marking == true then         
             add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, strip_length, 0) } )
             add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, strip_length, -1) } )
             add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, strip_length, 1) } )
@@ -221,8 +226,11 @@ function _draw()
             add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, strip_length, -1 * ((road_width_half - 0.1) - 0.2)) } )
         end
 
-        if section.objects == 1 then
-            add(sprites, { projected_pos = project({ x = road_width_half + 2, y = section.y, z = z_pos + z_offset }), z_pos = z_pos + z_offset } ) -- Add object type/sprite here?
+        if section.objects == true then
+            --add(sprites, { projected_pos = project({ x = road_width_half + 2, y = section.y, z = z_pos + z_offset }), z_pos = z_pos + z_offset } ) -- Add object type/sprite here?
+            
+            add(sprites, generate_sprite(sprite_w, sprite_h, road_width_half + 0.5 + section.object_offset_x, section.y, z_pos + z_offset))
+            add(sprites, generate_sprite(sprite_w, sprite_h, -1 * (road_width_half + 0.5 + section.object_offset_x), section.y, z_pos + z_offset))
         end
 
         z_offset += strip_length
@@ -244,15 +252,22 @@ function _draw()
     end
 
     for sprite in all(sprites) do
-        scale = 1 / sprite.z_pos
+        -- scale = 1 / sprite.z_pos
         
-        sprite_w = 24
-        sprite_h = 32
-        w = sprite_w * scale
-        h = sprite_h * scale
+        -- w = sprite_w * scale
+        -- h = sprite_h * scale
+        height = sprite.projected_corner_top_left.y - sprite.projected_corner_bottom_right.y
+        width = sprite.projected_corner_bottom_right.x - sprite.projected_corner_top_left.x
+
+        -- s = generate_sprite(24, 32, sprite.)
         
         sx, sy = (1 % 16) * 8, flr(1 \ 16) * 8
-        sspr(sx, sy, 24, 32, sprite.projected_pos.x - w, sprite.projected_pos.y - h, w, h)
+        -- sspr(sx, sy, 24, 32, sprite.projected_pos.x - w, sprite.projected_pos.y - h, w, h)
+        sspr(sx, sy, sprite_w, sprite_h, sprite.projected_corner_top_left.x - width / 2, sprite.projected_corner_bottom_right.y - height, width, height)
+        -- printh(sprite.projected_corner_top_left.y)
+        -- printh("tl.x: " .. sprite.projected_corner_top_left.x .. "/ br.x" .. sprite.projected_corner_bottom_right.x)
+        -- printh("tl.y: " .. sprite.projected_corner_top_left.y .. "/ br.y" .. sprite.projected_corner_bottom_right.y)
+        -- rectfill(sprite.projected_corner_top_left.x, sprite.projected_corner_top_left.y, sprite.projected_corner_bottom_right.x, sprite.projected_corner_bottom_right.y, 1)
     end
 
 
