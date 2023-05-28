@@ -52,24 +52,39 @@ section_config = {
 }
 
 function add_section_pair(section_config, slope, curve, y)
-    add(sections, { color = section_config.colors[1], landscape_color = section_config.colors_landscape[1], marking = false, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = slope, curve = curve, y = y })
-    add(sections, { color = section_config.colors[2], landscape_color = section_config.colors_landscape[2], marking = true, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = slope, curve = curve, y = y })
+    add(sections, { color = section_config.colors[1], landscape_color = section_config.colors_landscape[1], marking = false, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = slope, curve = curve })
+    add(sections, { color = section_config.colors[2], landscape_color = section_config.colors_landscape[2], marking = true, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = slope, curve = curve })
 end
 
 function _init()
     -- Generate initial sections
-    for x=0, 10 do
+    for x=0, 1 do
         add_section_pair(section_config, 0, 0, 0)
     end
 
-    -- add(sections, { color = 6, landscape_color = 11, marking = 0, slope = 0.1, curve = 0, y = 0 })
-    -- add(sections, { color = 6, landscape_color = 3, marking = 0, slope = 0.1, curve = 0, y = 0 })
+    add(sections, { color = 6, landscape_color = 11, marking = false, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = -0.05, curve = 0.1, y = 0 })
+    add(sections, { color = 13, landscape_color = 3, marking = true, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = -0.1, curve = 0.2, y = 0 })
+    
+    add(sections, { color = 6, landscape_color = 11, marking = false, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = -0.15, curve = 0.3, y = 0 })
+    add(sections, { color = 13, landscape_color = 3, marking = true, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = -0.2, curve = 0.4, y = 0 })
+    
+    add(sections, { color = 6, landscape_color = 11, marking = false, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = -0.15, curve = 0.5, y = 0 })
+    add(sections, { color = 13, landscape_color = 3, marking = true, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = -0.1, curve = 0.6, y = 0 })
+    
+    add(sections, { color = 6, landscape_color = 11, marking = false, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = -0.05, curve = 0.5, y = 0 })
+    add(sections, { color = 13, landscape_color = 3, marking = true, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = 0, curve = 0.4, y = 0 })
 
-    -- add(sections, { color = 6, landscape_color = 11, marking = 0, slope = 0, curve = 0, y = 0.1 })
-    -- add(sections, { color = 6, landscape_color = 3, marking = 0, slope = 0, curve = 0, y = 0.1 })
-
-    -- add(sections, { color = section_config.colors[1], landscape_color = 5, marking = 0, objects = 1, object_offset_x = rnd(1), slope = 0, curve = 0, y = 0 })
-
+    add(sections, { color = 6, landscape_color = 11, marking = false, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = 0.05, curve = 0.3, y = 0 })
+    add(sections, { color = 13, landscape_color = 3, marking = true, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = 0.1, curve = 0.2, y = 0 })
+    
+    add(sections, { color = 6, landscape_color = 11, marking = false, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = 0.15, curve = 0.1, y = 0 })
+    add(sections, { color = 13, landscape_color = 3, marking = true, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = 0.2, curve = 0, y = 0 })
+    
+    add(sections, { color = 6, landscape_color = 11, marking = false, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = 0.15, curve = -0.1, y = 0 })
+    add(sections, { color = 13, landscape_color = 3, marking = true, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = 0.1, curve = -0.2, y = 0 })
+    
+    add(sections, { color = 6, landscape_color = 11, marking = false, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = 0.05, curve = -0.3, y = 0 })
+    add(sections, { color = 13, landscape_color = 3, marking = true, objects = rnd() < 0.5, object_offset_x = rnd(1), slope = 0, curve = -0.4, y = 0 })
 
     sfx(0)
 
@@ -170,12 +185,12 @@ road_width = 5
 road_width_half = road_width / 2
 strip_length = 0.5
 
-function generate_strip(width, z, strip_length, x_offset)
+function generate_marking(width, z, strip_length, x_center_offset, x_offset, curve, y_offset, slope)
     local vertices = {}
-    add(vertices, project({ x = width + x_offset, y = 0, z = z + strip_length }))
-    add(vertices, project({ x = width + x_offset, y = 0, z = z }))
-    add(vertices, project({ x = -1 * width + x_offset, y = 0, z = z + strip_length }))
-    add(vertices, project({ x = -1 * width + x_offset, y = 0, z = z }))
+    add(vertices, project({ x = width + x_offset + curve + x_center_offset, y = y_offset + slope, z = z + strip_length })) -- Back right
+    add(vertices, project({ x = width + x_offset + x_center_offset, y = y_offset, z = z })) -- Front right
+    add(vertices, project({ x = (-1 * width + x_center_offset) + x_offset + curve, y = y_offset + slope, z = z + strip_length })) -- Back left
+    add(vertices, project({ x = (-1 * width + x_center_offset) + x_offset, y = y_offset, z = z })) -- Front left
     return vertices
 end
 
@@ -196,6 +211,8 @@ function _draw()
     rectfill(0, 0, 128, 128, 12)
     
     local z_offset = 0
+    local x_offset = 0 -- For curves
+    local y_offset = 0 -- For slop
     
     projected_rects = {}
     projected_mark_rects = {}
@@ -207,33 +224,35 @@ function _draw()
 
         slope = section.slope * -1
 
-        -- Calculate screen projections 
-        add(vertices, project({ x = road_width_half, y = section.y + slope, z = z_pos + z_offset + strip_length }))
-        add(vertices, project({ x = road_width_half, y = section.y, z = z_pos + z_offset }))
-        add(vertices, project({ x = -1 * (road_width_half), y = section.y + slope, z = z_pos + z_offset + strip_length }))
-        add(vertices, project({ x = -1 * (road_width_half), y = section.y, z = z_pos + z_offset }))
+        -- Calculate screen projections for road strips
+        add(vertices, project({ x = road_width_half + x_offset + section.curve, y = y_offset + slope, z = z_pos + z_offset + strip_length })) -- Back right
+        add(vertices, project({ x = road_width_half + x_offset, y = y_offset, z = z_pos + z_offset })) -- Front right
+        add(vertices, project({ x = (-1 * (road_width_half)) + x_offset + section.curve, y = y_offset + slope, z = z_pos + z_offset + strip_length })) -- Back left
+        add(vertices, project({ x = (-1 * (road_width_half)) + x_offset, y = y_offset, z = z_pos + z_offset })) -- Front left
         
         add(projected_rects, { vertices = vertices, color = section.color, landscape_color = section.landscape_color } )
         vertices = {}
         
         if section.marking == true then         
-            add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, strip_length, 0) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, strip_length, -1) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.01, z_pos + z_offset, strip_length, 1) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, strip_length, road_width_half - 0.1) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, strip_length, (road_width_half - 0.1) - 0.2) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, strip_length, -1 * (road_width_half - 0.1)) } )
-            add(projected_mark_rects, { vertices = generate_strip(0.02, z_pos + z_offset, strip_length, -1 * ((road_width_half - 0.1) - 0.2)) } )
+            add(projected_mark_rects, { vertices = generate_marking(0.01, z_pos + z_offset, strip_length, 0, x_offset, section.curve, y_offset, slope) } )
+            add(projected_mark_rects, { vertices = generate_marking(0.01, z_pos + z_offset, strip_length, -1, x_offset, section.curve, y_offset, slope) } )
+            add(projected_mark_rects, { vertices = generate_marking(0.01, z_pos + z_offset, strip_length, 1, x_offset, section.curve, y_offset, slope) } )
+            add(projected_mark_rects, { vertices = generate_marking(0.02, z_pos + z_offset, strip_length, road_width_half - 0.1, x_offset, section.curve, y_offset, slope) } )
+            add(projected_mark_rects, { vertices = generate_marking(0.02, z_pos + z_offset, strip_length, (road_width_half - 0.1) - 0.2, x_offset, section.curve, y_offset, slope) } )
+            add(projected_mark_rects, { vertices = generate_marking(0.02, z_pos + z_offset, strip_length, -1 * (road_width_half - 0.1), x_offset, section.curve, y_offset, slope) } )
+            add(projected_mark_rects, { vertices = generate_marking(0.02, z_pos + z_offset, strip_length, -1 * ((road_width_half - 0.1) - 0.2), x_offset, section.curve, y_offset, slope) } )
         end
 
         if section.objects == true then
-            --add(sprites, { projected_pos = project({ x = road_width_half + 2, y = section.y, z = z_pos + z_offset }), z_pos = z_pos + z_offset } ) -- Add object type/sprite here?
+            --add(sprites, { projected_pos = project({ x = road_width_half + 2, y = y_offset, z = z_pos + z_offset }), z_pos = z_pos + z_offset } ) -- Add object type/sprite here?
             
-            add(sprites, generate_sprite(sprite_w, sprite_h, road_width_half + 0.5 + section.object_offset_x, section.y, z_pos + z_offset))
-            add(sprites, generate_sprite(sprite_w, sprite_h, -1 * (road_width_half + 0.5 + section.object_offset_x), section.y, z_pos + z_offset))
+            add(sprites, generate_sprite(sprite_w, sprite_h, road_width_half + 0.5 + section.object_offset_x + x_offset, y_offset, z_pos + z_offset))
+            add(sprites, generate_sprite(sprite_w, sprite_h, -1 * (road_width_half + 0.5 + section.object_offset_x) + x_offset, y_offset, z_pos + z_offset))
         end
 
         z_offset += strip_length
+        x_offset += section.curve
+        y_offset += slope
     end
 
     -- Draw landscape strips
@@ -251,6 +270,7 @@ function _draw()
         draw_projected_filled_rect(projected_rect.vertices[1], projected_rect.vertices[2], projected_rect.vertices[3], projected_rect.vertices[4], 7)
     end
 
+    -- Draw object sprites
     for sprite in all(sprites) do
         -- scale = 1 / sprite.z_pos
         
@@ -309,9 +329,10 @@ function _update()
         sfx(1)
     end
 
-    -- if abs(player.pos.x) > road_width_half then
-    --     player.speed -= 0.02
-    -- end
+    -- Slow down when off-road
+    if abs(player.pos.x) > road_width_half then
+        player.speed -= 0.02
+    end
 
     if race_state == "running" then
         -- if player.speed < 0.05 then
